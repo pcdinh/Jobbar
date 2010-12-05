@@ -19,6 +19,8 @@ from twisted.internet import reactor, protocol
 
 factory = protocol.ServerFactory()
 
+# You can change configuration parameters here.
+
 # Server Configuration - BEGIN
 factory.configuration = {
     "debug": False,
@@ -28,7 +30,7 @@ factory.configuration = {
 }
 # Server Configuration - END
 
-# Don't touch the rest of all the code
+# Don't touch the rest of the code
 
 # if value is None we need to call synchronization method
 factory.sync = None

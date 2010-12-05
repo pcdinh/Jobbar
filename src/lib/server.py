@@ -3,19 +3,17 @@ from twisted.internet import protocol
 import simplejson as json
 
 class SocketHandler(protocol.Protocol):
-    def __init__(self):
-        print "instance created!"
-
     def connectionMade(self):
-        print "connection from %s" % self.transport.getPeer()
+        print self.transport.doWrite()
+        print "connection from %s" % self.transport.getPeer().host
 
     def connectionLost(self, reason):
         print "disconnected (%s)" % reason.getErrorMessage()
 
     def dataReceived(self, data):
-            response = self.requestHandler(data.strip())
-            if response != False:
-                self.transport.write(response);
+        response = self.requestHandler(data.strip())
+        if response != None:
+            self.transport.write(response);
 
     def requestHandler(self, request):
         try:
@@ -44,29 +42,50 @@ class SocketHandler(protocol.Protocol):
     This method adds a new job to local list and shares it with remote servers
     """
     def register(self, name):
-        pass
+        if not self.factory.jobs.get("local").has_key(name):
+            self.factory.jobs.get("local").put(name, [])
+
+        if self.transport not in self.factory.jobs.get("local").get(name):
+            self.factory.jobs.get("local").get(name).append(self.transport)
+
+        # call synchronization method
 
     """
     @param  String  name: Worker name
     This method removes a job from local list by job name and shares it with remote servers
     """
     def unregisterByName(self, name):
-        pass
+        if self.factory.jobs.get("local").has_key(name):
+            #if self.transport in self.factory.jobs.get("local").get(name):
+            self.factory.jobs.get("local").get(name).remove(self.transport)
+
+        # call synchronization method
 
     """
     This method removes jobs from local list by socket when connection closed with worker and shares it with remote servers
     """
     def unregisterBySocket(self):
-        pass
+        for job in self.factory.jobs.get("local"):
+            self.factory.jobs.get("local").get(job).remove(self.transport)
+
+        # call synchronization method
 
     """
     @param  String  name: Worker name
     @param  JSON    params: Parameters
     @param  Boolean background: Job type
-    This method finds a worker suitable with the reuqest and sends the request to worker.
+    This method finds a worker suitable with the request and sends the request to worker.
     """
     def call(self, name, params, background):
-        pass
+        worker = self.getWorkerSocket(name)
+        if worker != False:
+            if not background:
+                self.factory.requests.get("local").put(params.get("uid"), self.transport)
+
+            worker.write(json.dumps(params));
+            return None
+        else:
+            return '{"status": 0, "error": "unknown job request"}'
 
     """
     @param  JSON    data: Worker response
@@ -75,4 +94,11 @@ class SocketHandler(protocol.Protocol):
     """
     def response(self, data):
         pass
+
+    """
+    @param  String  name: Worker name
+    This method returns a transport instance suitable with the given job
+    """
+    def getWorkerSocket(self, name):
+        return False
     # INSTRUCTION SET - End
