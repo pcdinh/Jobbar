@@ -1,11 +1,11 @@
-from lib.config import Configuration
 from twisted.internet import protocol
 
 import simplejson as json
 
-jConfig = Configuration()
-
 class SocketHandler(protocol.Protocol):
+    def __init__(self):
+        print "instance created!"
+
     def connectionMade(self):
         print "connection from %s" % self.transport.getPeer()
 

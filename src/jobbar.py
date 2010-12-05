@@ -14,13 +14,36 @@
     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-from lib.config import Configuration
 from lib.server import SocketHandler
 from twisted.internet import reactor, protocol
 
-jConfig = Configuration()
-
 factory = protocol.ServerFactory()
+
+# Server Configuration - BEGIN
+factory.configuration = {
+    "debug": False,
+    "port": 9000,
+    "server": None,
+    "plugin": {}
+}
+# Server Configuration - END
+
+# Don't touch the rest of all the code
+
+# if value is None we need to call synchronization method
+factory.sync = None
+# we must change it with a Boolean value as confliction
+
+factory.servers = []
+factory.jobs = {
+    "local": {},
+    "remote": {}
+}
+factory.requests = {
+    "local": {},
+    "remote": {}
+}
+
 factory.protocol = SocketHandler
-reactor.listenTCP(jConfig.port, factory)
+reactor.listenTCP(factory.configuration.get("port"), factory)
 reactor.run()
