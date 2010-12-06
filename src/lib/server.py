@@ -4,6 +4,7 @@ import random
 import simplejson as json
 import uuid
 
+# TODO: check string literals!
 class SocketHandler(protocol.Protocol):
     def connectionMade(self):
         #print "connection from %s" % self.transport.getPeer().host
@@ -60,6 +61,7 @@ class SocketHandler(protocol.Protocol):
             self.factory.jobs.get('local').get(name).append(self.transport)
 
         # call synchronization method
+        return None
 
     """
     @param  String  name: Worker name
@@ -71,6 +73,7 @@ class SocketHandler(protocol.Protocol):
             self.factory.jobs.get('local').get(name).remove(self.transport)
 
         # call synchronization method
+        return None
 
     """
     This method removes jobs from local list by socket when connection closed with worker and shares it with remote servers
@@ -80,11 +83,12 @@ class SocketHandler(protocol.Protocol):
             self.factory.jobs.get('local').get(job).remove(self.transport)
 
         # call synchronization method
+        return None
 
     """
     @param  String  name: Worker name
     @param  JSON    params: Parameters
-    @param  Boolean background: Job type
+    @param  Boolean background: Request type
     This method finds a worker suitable with the request and sends the request to worker.
     """
     def call(self, name, params, background):
