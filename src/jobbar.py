@@ -12,6 +12,9 @@
     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
     FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+    {"cmd": "register", "params": {"name": "just-do-it"}}
+    {"cmd": "call", "params": {"name": "just-do-it", "bg": true, "params": {"user": 1001, "path": "/tmp/user-1001.log"}}}
 """
 
 from lib.server import SocketHandler
