@@ -15,9 +15,11 @@ class SocketHandler(protocol.Protocol):
         self.unregisterBySocket()
 
     def dataReceived(self, data):
-        response = self.requestHandler(data.strip())
-        if response != None:
-            self.transport.write(response + "\n\r");
+        line = data.strip()
+        if len(line) > 0:
+            response = self.requestHandler(line)
+            if response != None:
+                self.transport.write(response + "\n\r");
 
     def requestHandler(self, request):
         try:
@@ -38,7 +40,7 @@ class SocketHandler(protocol.Protocol):
                 return self.unregisterByName(params.get('name'))
             elif command == 'call':
                 if params.get('bg') == False:
-                    params.put('uuid', uuid.uuid1())
+                    params['uuid'] = uuid.uuid1()
 
                 return self.call(params.get('name'), params, params.get('bg'))
             elif command == 'response':
@@ -55,10 +57,10 @@ class SocketHandler(protocol.Protocol):
     """
     def register(self, name):
         if not self.factory.jobs.get('local').has_key(name):
-            self.factory.jobs.get('local').put(name, [])
+            self.factory.jobs.get('local')[name] = []
 
         if self.transport not in self.factory.jobs.get('local').get(name):
-            self.factory.jobs.get('local').get(name).append(self.transport)
+            self.factory.jobs.get('local').get(name).append(self)
 
         # call synchronization method
         return None
@@ -70,7 +72,7 @@ class SocketHandler(protocol.Protocol):
     def unregisterByName(self, name):
         if self.factory.jobs.get('local').has_key(name):
             #if self.transport in self.factory.jobs.get("local").get(name):
-            self.factory.jobs.get('local').get(name).remove(self.transport)
+            self.factory.jobs.get('local').get(name).remove(self)
 
         # call synchronization method
         return None
@@ -80,7 +82,7 @@ class SocketHandler(protocol.Protocol):
     """
     def unregisterBySocket(self):
         for job in self.factory.jobs.get('local'):
-            self.factory.jobs.get('local').get(job).remove(self.transport)
+            self.factory.jobs.get('local').get(job).remove(self)
 
         # call synchronization method
         return None
@@ -93,11 +95,11 @@ class SocketHandler(protocol.Protocol):
     """
     def call(self, name, params, background):
         worker = self.getWorkerSocket(name)
-        if worker != None:
+        if worker != None and (len(worker) == 1):
             if not background:
-                self.factory.requests.get('local').put(params.get('uuid'), self.transport)
+                self.factory.requests.get('local')[params.get('uuid')] = self
 
-            worker.write(json.dumps(params));
+            worker[0].transport.write(json.dumps(params));
             return None
         else:
             return '{"status": 0, "error": "unknown job request"}'
@@ -124,8 +126,8 @@ class SocketHandler(protocol.Protocol):
     This method returns a transport instance suitable with the given job
     """
     def getWorkerSocket(self, name):
-        if self.factory.jobs.has_key(name) and (len(self.factory.jobs[name]) > 0):
-            worker = random.sample(self.factory.jobs.get(name), 1)
+        if self.factory.jobs.get('local').has_key(name) and (len(self.factory.jobs.get('local')[name]) > 0):
+            worker = random.sample(self.factory.jobs.get('local').get(name), 1)
             if len(worker) > 0:
                 # Still connected? If not we need to call this method again!
                 return worker
