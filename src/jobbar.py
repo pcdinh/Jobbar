@@ -20,6 +20,8 @@
 from lib.server import SocketHandler
 from twisted.internet import reactor, protocol
 
+import socket
+
 factory = protocol.ServerFactory()
 
 # You can change configuration parameters here.
@@ -35,10 +37,6 @@ factory.configuration = {
 
 # Don't touch the rest of the code
 
-# if value is None we need to call synchronization method
-factory.sync = None
-# we must change it with a Boolean value as confliction
-
 factory.servers = []
 factory.jobs = {
     "local": {},
@@ -48,6 +46,24 @@ factory.requests = {
     "local": {},
     "remote": {}
 }
+
+# Synchronization Process- BEGIN
+if factory.configuration.get("server") != None:
+    try:
+        sync = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sync.bind((factory.configuration.get("server"), factory.configuration.get("port")))
+        sync.send("{\"cmd\": \"sync\"}, \"params\": {}");
+        response = sync.recv()
+        sync.close()
+
+        if response:
+            # update factory!!
+            pass
+
+    except:
+        # job server is not reachable at the moment
+        pass
+# Synchronization Process- END
 
 factory.protocol = SocketHandler
 reactor.listenTCP(factory.configuration.get("port"), factory)

@@ -25,12 +25,14 @@ class SocketHandler(protocol.Protocol):
         try:
             data = json.loads(request)
         except:
-            return '{"status": 0, "error": "invalid input format"}'
+            return None
+            #return '{"status": 0, "error": "invalid input format"}'
 
         if data.has_key('params'):
             params = data.get('params')
         else:
-            return '{"status": 0, "error": "missing parameter: params (parameters)"}'
+            return None
+            #return '{"status": 0, "error": "missing parameter: params (parameters)"}'
 
         if data.has_key('cmd'):
             command = data.get('cmd')
@@ -50,7 +52,8 @@ class SocketHandler(protocol.Protocol):
                 return self.response(data)
 
             else:
-                return '{"status": 0, "error": "unknown command"}'
+                return None
+                #return '{"status": 0, "error": "unknown command"}'
         #else: return '{"status": 0, "error": "missing parameter: cmd (command)"}'
 
     # INSTRUCTION SET - Begin
@@ -102,10 +105,10 @@ class SocketHandler(protocol.Protocol):
             if not background:
                 self.factory.requests.get('local')[params.get('uuid')] = self
 
-            worker[0].transport.write(json.dumps(params));
-            return None
-        else:
-            return '{"status": 0, "error": "unknown job request"}'
+            worker.transport.write(json.dumps(params));
+
+        #else: return '{"status": 0, "error": "unknown job request"}'
+        return None
 
     """
     @param  JSON    data: Worker response
@@ -117,7 +120,7 @@ class SocketHandler(protocol.Protocol):
             process = data.get('params').get('uuid')
             if self.factory.requests.get('local').has_key(process):
                 del data.get('params')['uuid']
-                self.factory.requests.get('local').get(process)[process].write(data.get('params'))
+                self.factory.requests.get('local').get(process)[process].transport.write(data.get('params'))
                 del self.factory.requests.get('local').get(process)[process]
 
             # else: unknown uuid!
@@ -133,7 +136,7 @@ class SocketHandler(protocol.Protocol):
             worker = random.sample(self.factory.jobs.get('local').get(name), 1)
             if len(worker) > 0:
                 # Still connected? If not we need to call this method again!
-                return worker
+                return worker[0]
             else:
                 return None
 
