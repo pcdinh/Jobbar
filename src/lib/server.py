@@ -36,19 +36,22 @@ class SocketHandler(protocol.Protocol):
             command = data.get('cmd')
             if command == 'register':
                 return self.register(params.get('name'))
+
             elif command == 'unregister':
                 return self.unregisterByName(params.get('name'))
+
             elif command == 'call':
                 if params.get('bg') == False:
                     params['uuid'] = uuid.uuid1()
 
                 return self.call(params.get('name'), params, params.get('bg'))
+
             elif command == 'response':
                 return self.response(data)
+
             else:
                 return '{"status": 0, "error": "unknown command"}'
-        else:
-            return '{"status": 0, "error": "missing parameter: cmd (command)"}'
+        #else: return '{"status": 0, "error": "missing parameter: cmd (command)"}'
 
     # INSTRUCTION SET - Begin
     """
