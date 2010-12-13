@@ -42,6 +42,9 @@ class SocketHandler(protocol.Protocol):
             elif command == 'unregister':
                 return self.unregisterByName(params.get('name'))
 
+            elif command == 'sync':
+                return self.sync()
+
             elif command == 'call':
                 if params.get('bg') == False:
                     params['uuid'] = uuid.uuid1()
@@ -57,6 +60,10 @@ class SocketHandler(protocol.Protocol):
         #else: return '{"status": 0, "error": "missing parameter: cmd (command)"}'
 
     # INSTRUCTION SET - Begin
+    def sync(self):
+        self.transport.write();
+
+
     """
     @param  String  name: Worker name
     This method adds a new job to local list and shares it with remote servers
