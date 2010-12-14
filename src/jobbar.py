@@ -13,6 +13,7 @@
     FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+    {"cmd": "sync", "params": {}}
     {"cmd": "register", "params": {"name": "just-do-it"}}
     {"cmd": "call", "params": {"name": "just-do-it", "bg": true, "params": {"user": 1001, "path": "/tmp/user-1001.log"}}}
 """
@@ -49,6 +50,7 @@ factory.requests = {
 
 # Synchronization Process- BEGIN
 if factory.configuration.get("server") != None:
+    factory.servers.append(factory.configuration.get("server"))
     try:
         sync = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sync.bind((factory.configuration.get("server"), factory.configuration.get("port")))

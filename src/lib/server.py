@@ -67,13 +67,31 @@ class SocketHandler(protocol.Protocol):
     This method starts the synchronization process and returns do-sync request including server and job lists
     """
     def sync(self):
+        tempData = {
+            "servers": self.factory.servers,
+            "jobs"   : self.factory.jobs.get("remote")
+        }
+        if len(self.factory.jobs.get("local")) > 0:
+            for job in self.factory.jobs.get("local"):
+                if not tempData.get("jobs").has_key(job):
+                    tempData.get("jobs")[job] = []
+
+                # we need to convert local jobs to remote jobs by ip addresses
+                if len(self.factory.jobs.get("local").get(job)) > 0:
+                    for worker in self.factory.jobs.get("local").get(job):
+                        ip = worker.transport.getPeer().host
+                        if not ip in tempData.get("jobs").get(job):
+                            tempData.get("jobs").get(job).append(ip)
+
         self.transport.write(json.dumps({
             "cmd"   : "do-sync",
-            "params": {
-                "servers": self.factory.servers,
-                "jobs"   : self.factory.jobs
-            }
+            "params": tempData
         }));
+
+        # add the synchronized server into server list
+        if not self.transport.getPeer().host in self.factory.servers:
+            self.factory.servers.append(self.transport.getPeer().host)
+        del tempData
         return None
 
     """
@@ -88,6 +106,19 @@ class SocketHandler(protocol.Protocol):
                 if not server in self.factory.servers:
                     self.factory.servers.append(server)
 
+        # job list
+        if len(jobs) > 0:
+            for job in jobs:
+                if job in self.factory.jobs.get("remote"):
+                    if len(jobs.get(job)) > 0:
+                        for server in jobs.get(job):
+                            if not server in self.factory.jobs.get("remote").get(job):
+                                self.factory.jobs.get("remote").get(job).append(server)
+                else:
+                    self.factory.jobs.get("remote")[job] = jobs.get(job)
+
+        print self.factory.servers
+        print self.factory.jobs
         return None
 
     """
