@@ -45,6 +45,9 @@ class SocketHandler(protocol.Protocol):
             elif command == 'sync':
                 return self.sync()
 
+            elif command == 'do-sync':
+                return self.doSync(params.get("servers"), params.get("jobs"))
+
             elif command == 'call':
                 if params.get('bg') == False:
                     params['uuid'] = uuid.uuid1()
@@ -60,9 +63,32 @@ class SocketHandler(protocol.Protocol):
         #else: return '{"status": 0, "error": "missing parameter: cmd (command)"}'
 
     # INSTRUCTION SET - Begin
+    """
+    This method starts the synchronization process and returns do-sync request including server and job lists
+    """
     def sync(self):
-        self.transport.write();
+        self.transport.write(json.dumps({
+            "cmd"   : "do-sync",
+            "params": {
+                "servers": self.factory.servers,
+                "jobs"   : self.factory.jobs
+            }
+        }));
+        return None
 
+    """
+    @param  List    servers: Remote server list
+    @param  Object  jobs: Available job list
+    This method returns some sort of server and job lists which are available on job servers.
+    """
+    def doSync(self, servers, jobs):
+        # server list
+        if len(servers) > 0:
+            for server in servers:
+                if not server in self.factory.servers:
+                    self.factory.servers.append(server)
+
+        return None
 
     """
     @param  String  name: Worker name
