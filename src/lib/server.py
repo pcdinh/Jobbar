@@ -61,7 +61,9 @@ class SocketHandler(protocol.Protocol):
             else:
                 return None
                 #return '{"status": 0, "error": "unknown command"}'
+
         #else: return '{"status": 0, "error": "missing parameter: cmd (command)"}'
+        return None
 
     # INSTRUCTION SET - Begin
     """
@@ -133,7 +135,7 @@ class SocketHandler(protocol.Protocol):
         if self.transport not in self.factory.jobs.get('local').get(name):
             self.factory.jobs.get('local').get(name).append(self)
 
-        # call synchronization method
+        # TODO: call synchronization method
         return None
 
     """
@@ -145,7 +147,7 @@ class SocketHandler(protocol.Protocol):
             #if self.transport in self.factory.jobs.get("local").get(name):
             self.factory.jobs.get('local').get(name).remove(self)
 
-        # call synchronization method
+        # TODO: call synchronization method
         return None
 
     """
@@ -155,7 +157,7 @@ class SocketHandler(protocol.Protocol):
         for job in self.factory.jobs.get('local'):
             self.factory.jobs.get('local').get(job).remove(self)
 
-        # call synchronization method
+        # TODO: call synchronization method
         return None
 
     """
@@ -202,7 +204,7 @@ class SocketHandler(protocol.Protocol):
             worker.transport.write("%s\r\n" % json.dumps(params));
             return None
 
-        # else: we should make another remote call if there is no suitable worker!
+        # TODO: we should make another remote call if there is no suitable worker!
 
         return None
 
@@ -247,7 +249,7 @@ class SocketHandler(protocol.Protocol):
         if self.factory.jobs.get('local').has_key(name) and (len(self.factory.jobs.get('local')[name]) > 0):
             worker = random.sample(self.factory.jobs.get('local').get(name), 1)
             if len(worker) > 0:
-                # Still connected? If not we need to call this method again!
+                # TODO: Still connected? If not we need to call this method again!
                 return worker[0]
             else:
                 return None
@@ -266,7 +268,7 @@ class SocketHandler(protocol.Protocol):
                 worker.bind((ip, self.factory.configuration.get("port")))
                 return worker
             except:
-                # remove unavailable server
+                # TODO: remove unavailable server
                 return self.getWorkerSocket(name)
 
         return None
