@@ -54,7 +54,7 @@ if factory.configuration.get("server") != None:
     try:
         sync = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sync.bind((factory.configuration.get("server"), factory.configuration.get("port")))
-        sync.send("{\"cmd\": \"sync\"}, \"params\": {}");
+        sync.send("{\"cmd\": \"sync\"}, \"params\": {}\r\n");
         response = sync.recv()
         sync.close()
 

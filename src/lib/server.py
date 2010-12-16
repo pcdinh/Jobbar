@@ -2,6 +2,7 @@ from twisted.internet import protocol
 
 import random
 import simplejson as json
+import socket
 import uuid
 
 # TODO: check string literals!
@@ -164,14 +165,45 @@ class SocketHandler(protocol.Protocol):
     This method finds a worker suitable with the request and sends the request to worker.
     """
     def call(self, name, params, background):
-        worker = self.getWorkerSocket(name)
-        if worker != None and (len(worker) == 1):
+        worker = self.getWorkerTransport(name)
+        if worker != None:
             if not background:
                 self.factory.requests.get('local')[params.get('uuid')] = self
 
-            worker.transport.write(json.dumps(params));
+            worker.transport.write("%s\r\n" % json.dumps(params));
+            return None
 
-        #else: return '{"status": 0, "error": "unknown job request"}'
+        worker = self.getWorkerSocket(name)
+        if worker != None:
+            if not background:
+                self.factory.requests.get('local')[params.get('uuid')] = self
+
+            # remote job call
+            worker.send("%s\r\n" % json.dumps({
+                "cmd"   : "remote-call",
+                "params": json.dumps(params)
+            }))
+            worker.close()
+
+        return None
+
+    """
+    @param  String  name: Worker name
+    @param  JSON    params: Parameters
+    @param  Boolean background: Request type
+    This method finds a worker suitable with the request and sends the request to worker.
+    """
+    def remoteCall(self, name, params, background):
+        worker = self.getWorkerTransport(name)
+        if worker != None:
+            if not background:
+                self.factory.requests.get('remote')[params.get('uuid')] = self.transport.getPeer().host
+
+            worker.transport.write("%s\r\n" % json.dumps(params));
+            return None
+
+        # else: we should make another remote call if there is no suitable worker!
+
         return None
 
     """
@@ -184,8 +216,24 @@ class SocketHandler(protocol.Protocol):
             process = data.get('params').get('uuid')
             if self.factory.requests.get('local').has_key(process):
                 del data.get('params')['uuid']
-                self.factory.requests.get('local').get(process)[process].transport.write(data.get('params'))
-                del self.factory.requests.get('local').get(process)[process]
+                self.factory.requests.get('local').get(process).transport.write("%s\r\n" % data.get('params'))
+                del self.factory.requests.get('local')[process]
+
+            elif self.factory.requests.get('remote').has_key(process):
+                del data.get('params')['uuid']
+                ip = self.factory.requests.get('remote').get(process)
+                del self.factory.requests.get('remote')[process]
+
+                try:
+                    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    client.bind((ip, self.factory.configuration.get("port")))
+                    client.send("%s\r\n" % json.dumps({
+                        "cmd"   : "remote-call",
+                        "params": json.dumps(data.get('params'))
+                    }))
+                    client.close()
+                except:
+                    pass
 
             # else: unknown uuid!
 
@@ -193,9 +241,9 @@ class SocketHandler(protocol.Protocol):
 
     """
     @param  String  name: Worker name
-    This method returns a transport instance suitable with the given job
+    This method returns a worker connection suitable with the given job
     """
-    def getWorkerSocket(self, name):
+    def getWorkerTransport(self, name):
         if self.factory.jobs.get('local').has_key(name) and (len(self.factory.jobs.get('local')[name]) > 0):
             worker = random.sample(self.factory.jobs.get('local').get(name), 1)
             if len(worker) > 0:
@@ -203,6 +251,23 @@ class SocketHandler(protocol.Protocol):
                 return worker[0]
             else:
                 return None
+
+        return None
+
+    """
+    @param  String  name: Worker name
+    This method returns a worker socket suitable with the given job
+    """
+    def getWorkerSocket(self, name):
+        if self.factory.jobs.get('remote').has_key(name) and (len(self.factory.jobs.get('remote')[name]) > 0):
+            ip = random.sample(self.factory.jobs.get('remote').get(name), 1)
+            try:
+                worker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                worker.bind((ip, self.factory.configuration.get("port")))
+                return worker
+            except:
+                # remove unavailable server
+                return self.getWorkerSocket(name)
 
         return None
     # INSTRUCTION SET - End
