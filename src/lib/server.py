@@ -55,6 +55,12 @@ class SocketHandler(protocol.Protocol):
 
                 return self.call(params.get('name'), params, params.get('bg'))
 
+            elif command == 'remote':
+                if params.get('bg') == False:
+                    params['uuid'] = uuid.uuid1()
+
+                return self.remoteCall(params.get('name'), params, params.get('bg'))
+
             elif command == 'response':
                 return self.response(data)
 
@@ -182,7 +188,7 @@ class SocketHandler(protocol.Protocol):
 
             # remote job call
             worker.send("%s\r\n" % json.dumps({
-                "cmd"   : "remote-call",
+                "cmd"   : "remote",
                 "params": json.dumps(params)
             }))
             worker.close()
