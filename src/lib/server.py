@@ -5,7 +5,6 @@ import simplejson as json
 import socket
 import uuid
 
-# TODO: check string literals!
 class SocketHandler(protocol.Protocol):
     def connectionMade(self):
         #print "connection from %s" % self.transport.getPeer().host
@@ -45,6 +44,9 @@ class SocketHandler(protocol.Protocol):
 
             elif command == 'sync':
                 return self.sync()
+
+            elif command == 'notify':
+                return self.notify(params.get("do"), params.get("name"))
 
             elif command == 'do-sync':
                 return self.doSync(params.get("servers"), params.get("jobs"))
@@ -126,8 +128,25 @@ class SocketHandler(protocol.Protocol):
                 else:
                     self.factory.jobs.get("remote")[job] = jobs.get(job)
 
-        print self.factory.servers
-        print self.factory.jobs
+        return None
+
+    """
+    @param  String  name: Worker name
+    This method adds a new job to local list and shares it with remote servers
+    """
+    def notify(self, do, name):
+        ip = self.transport.getPeer().host
+
+        if do == "register":
+            if not self.factory.job.get("remote").has_key(name):
+                self.factory.job.get("remote")[name] = [ ip ]
+            elif ip not in self.factory.job.get("remote").get(name):
+                self.factory.job.get("remote").get(name).append(ip)
+
+        elif do == "unregister":
+            if self.factory.job.get("remote").has_key(name):
+                self.factory.job.get("remote").get(name).remove(ip)
+
         return None
 
     """
@@ -141,7 +160,13 @@ class SocketHandler(protocol.Protocol):
         if self.transport not in self.factory.jobs.get('local').get(name):
             self.factory.jobs.get('local').get(name).append(self)
 
-        # TODO: call synchronization method
+        self.broadcast({
+            "cmd"   : "notify",
+            "params": {
+                "do"  : "register",
+                "name": name
+            }
+        })
         return None
 
     """
@@ -153,7 +178,13 @@ class SocketHandler(protocol.Protocol):
             #if self.transport in self.factory.jobs.get("local").get(name):
             self.factory.jobs.get('local').get(name).remove(self)
 
-        # TODO: call synchronization method
+        self.broadcast({
+            "cmd"   : "notify",
+            "params": {
+                "do"  : "unregister",
+                "name": name
+            }
+        })
         return None
 
     """
@@ -211,7 +242,6 @@ class SocketHandler(protocol.Protocol):
             return None
 
         # TODO: we should make another remote call if there is no suitable worker!
-
         return None
 
     """
@@ -255,7 +285,6 @@ class SocketHandler(protocol.Protocol):
         if self.factory.jobs.get('local').has_key(name) and (len(self.factory.jobs.get('local')[name]) > 0):
             worker = random.sample(self.factory.jobs.get('local').get(name), 1)
             if len(worker) > 0:
-                # TODO: Still connected? If not we need to call this method again!
                 return worker[0]
             else:
                 return None
@@ -278,4 +307,20 @@ class SocketHandler(protocol.Protocol):
                 return self.getWorkerSocket(name)
 
         return None
+
+    """
+    @param  Object  message: Broadcast message
+    This method broadcasts the given message to all remote servers
+    """
+    def broadcast(self, message):
+        if len(self.factory.servers) > 0:
+            for server in self.factory.servers:
+                try:
+                    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    client.bind((server, self.factory.configuration.get("port")))
+                    client.send("%s\r\n" % json.dumps(message))
+                    client.close()
+                except:
+                    pass
+
     # INSTRUCTION SET - End
