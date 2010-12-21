@@ -49,13 +49,11 @@ factory.requests = {
 
 # Synchronization Process- BEGIN
 if factory.configuration.get("server") != None:
-    print "sync server found"
     try:
         sync = socket(AF_INET, SOCK_STREAM)
         sync.connect((factory.configuration.get("server"), factory.configuration.get("port")))
-        sync.send("{\"cmd\": \"sync\"}, \"params\": {}\r\n");
+        sync.send("{\"cmd\": \"sync\", \"params\": {}}\r\n");
         sync.close()
-        print "sync request sent"
     except:
         pass
 

@@ -17,7 +17,6 @@ class SocketHandler(protocol.Protocol):
 
     def dataReceived(self, data):
         line = data.strip()
-        print line
         if len(line) > 0:
             response = self.requestHandler(line)
             if response != None:
@@ -98,7 +97,7 @@ class SocketHandler(protocol.Protocol):
 
         try:
             sync = socket(AF_INET, SOCK_STREAM)
-            sync.connect((factory.configuration.get("server"), factory.configuration.get("port")))
+            sync.connect((self.transport.getPeer().host, self.factory.configuration.get("port")))
             sync.send("%s\r\n" % json.dumps({
                 "cmd"   : "do-sync",
                 "params": tempData
@@ -132,6 +131,9 @@ class SocketHandler(protocol.Protocol):
                     if len(jobs.get(job)) > 0:
                         for server in jobs.get(job):
                             if not server in self.factory.jobs.get("remote").get(job):
+                                if server == "127.0.0.1":
+                                    server = self.transport.getPeer().host
+
                                 self.factory.jobs.get("remote").get(job).append(server)
                 else:
                     self.factory.jobs.get("remote")[job] = jobs.get(job)
@@ -157,7 +159,8 @@ class SocketHandler(protocol.Protocol):
 
         elif do == "unregister":
             if self.factory.job.get("remote").has_key(name):
-                self.factory.job.get("remote").get(name).remove(ip)
+                if ip in self.factory.job.get("remote").get(name):
+                    self.factory.job.get("remote").get(name).remove(ip)
 
         return None
 
@@ -187,8 +190,8 @@ class SocketHandler(protocol.Protocol):
     """
     def unregisterByName(self, name):
         if self.factory.jobs.get('local').has_key(name):
-            #if self.transport in self.factory.jobs.get("local").get(name):
-            self.factory.jobs.get('local').get(name).remove(self)
+            if self in self.factory.jobs.get("local").get(name):
+                self.factory.jobs.get('local').get(name).remove(self)
 
         self.broadcast({
             "cmd"   : "notify",
@@ -204,7 +207,8 @@ class SocketHandler(protocol.Protocol):
     """
     def unregisterBySocket(self):
         for job in self.factory.jobs.get('local'):
-            self.factory.jobs.get('local').get(job).remove(self)
+            if self in self.factory.jobs.get('local').get(job):
+                self.factory.jobs.get('local').get(job).remove(self)
 
         # TODO: call synchronization method
         return None
