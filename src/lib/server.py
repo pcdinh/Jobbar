@@ -3,7 +3,6 @@ from twisted.internet import protocol
 
 import random
 import simplejson as json
-import sys
 import uuid
 
 class SocketHandler(protocol.Protocol):
@@ -13,7 +12,8 @@ class SocketHandler(protocol.Protocol):
 
     def connectionLost(self, reason):
         #print "disconnected (%s)" % reason.getErrorMessage()
-        self.unregisterBySocket()
+        if self.transport.getPeer().host in self.factory.workers:
+            self.unregisterBySocket()
 
     def dataReceived(self, data):
         line = data.strip()
@@ -169,6 +169,9 @@ class SocketHandler(protocol.Protocol):
     This method adds a new job to local list and shares it with remote servers
     """
     def register(self, name):
+        if self.transport.getPeer().host not in self.factory.workers:
+            self.factory.workers.append(self.transport.getPeer().host)
+
         if not self.factory.jobs.get('local').has_key(name):
             self.factory.jobs.get('local')[name] = []
 
@@ -319,7 +322,9 @@ class SocketHandler(protocol.Protocol):
                 worker.connect((ip, self.factory.configuration.get("port")))
                 return worker
             except:
-                # TODO: remove unavailable server
+                if ip in self.factory.jobs.get('remote').get(name):
+                    self.factory.jobs.get('remote').get(name).remove(ip)
+
                 return self.getWorkerSocket(name)
 
         return None

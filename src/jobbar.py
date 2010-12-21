@@ -30,7 +30,7 @@ factory = protocol.ServerFactory()
 factory.configuration = {
     "debug": False,
     "port": 9000,
-    "server": "192.168.1.106",
+    "server": None,
     "plugin": {}
 }
 # Server Configuration - END
@@ -38,6 +38,7 @@ factory.configuration = {
 # Don't touch the rest of the code
 
 factory.servers = []
+factory.workers = []
 factory.jobs = {
     "local": {},
     "remote": {}
