@@ -19,9 +19,8 @@
 """
 
 from lib.server import SocketHandler
+from socket import *
 from twisted.internet import reactor, protocol
-
-import socket
 
 factory = protocol.ServerFactory()
 
@@ -31,7 +30,7 @@ factory = protocol.ServerFactory()
 factory.configuration = {
     "debug": False,
     "port": 9000,
-    "server": None,
+    "server": "192.168.1.106",
     "plugin": {}
 }
 # Server Configuration - END
@@ -50,37 +49,16 @@ factory.requests = {
 
 # Synchronization Process- BEGIN
 if factory.configuration.get("server") != None:
+    print "sync server found"
     try:
-        sync = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sync.bind((factory.configuration.get("server"), factory.configuration.get("port")))
+        sync = socket(AF_INET, SOCK_STREAM)
+        sync.connect((factory.configuration.get("server"), factory.configuration.get("port")))
         sync.send("{\"cmd\": \"sync\"}, \"params\": {}\r\n");
-        response = sync.recv()
         sync.close()
-
-        if response:
-            try:
-                data = json.loads(response)
-                factory.servers.append(factory.configuration.get("server"))
-
-                if len(data.get("servers")) > 0:
-                    for server in data.get("servers"):
-                        if not server in self.factory.servers:
-                            self.factory.servers.append(server)
-
-                # job list
-                if len(data.get("jobs")) > 0:
-                    for job in data.get("jobs"):
-                        if job in self.factory.jobs.get("remote"):
-                            if len(data.get("jobs").get(job)) > 0:
-                                for server in data.get("jobs").get(job):
-                                    if not server in self.factory.jobs.get("remote").get(job):
-                                        self.factory.jobs.get("remote").get(job).append(server)
-                        else:
-                            self.factory.jobs.get("remote")[job] = data.get("jobs").get(job)
-            except:
-                pass
+        print "sync request sent"
     except:
         pass
+
 # Synchronization Process- END
 
 factory.protocol = SocketHandler

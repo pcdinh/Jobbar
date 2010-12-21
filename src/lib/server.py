@@ -1,8 +1,9 @@
+from socket import *
 from twisted.internet import protocol
 
 import random
 import simplejson as json
-import socket
+import sys
 import uuid
 
 class SocketHandler(protocol.Protocol):
@@ -16,6 +17,7 @@ class SocketHandler(protocol.Protocol):
 
     def dataReceived(self, data):
         line = data.strip()
+        print line
         if len(line) > 0:
             response = self.requestHandler(line)
             if response != None:
@@ -44,6 +46,9 @@ class SocketHandler(protocol.Protocol):
 
             elif command == 'sync':
                 return self.sync()
+
+            elif command == 'do-sync':
+                return self.doSync(params.get("servers"), params.get("jobs"))
 
             elif command == 'notify':
                 return self.notify(params.get("do"), params.get("name"))
@@ -91,12 +96,50 @@ class SocketHandler(protocol.Protocol):
                         if not ip in tempData.get("jobs").get(job):
                             tempData.get("jobs").get(job).append(ip)
 
-        self.transport.write(json.dumps(tempData));
+        try:
+            sync = socket(AF_INET, SOCK_STREAM)
+            sync.connect((factory.configuration.get("server"), factory.configuration.get("port")))
+            sync.send("%s\r\n" % json.dumps({
+                "cmd"   : "do-sync",
+                "params": tempData
+            }));
+            sync.close()
+        except:
+            return None
 
         # add the synchronized server into server list
         if not self.transport.getPeer().host in self.factory.servers:
             self.factory.servers.append(self.transport.getPeer().host)
+
         del tempData
+        return None
+
+    """
+    @param  List  servers: List of remote servers
+    @param  Dict  jobs: List of remote jobs
+    This method completes synchronization process
+    """
+    def doSync(self, servers, jobs):
+        if len(servers) > 0:
+            for server in servers:
+                if not server in self.factory.servers:
+                    self.factory.servers.append(server)
+
+        # job list
+        if len(jobs) > 0:
+            for job in jobs:
+                if job in self.factory.jobs.get("remote"):
+                    if len(jobs.get(job)) > 0:
+                        for server in jobs.get(job):
+                            if not server in self.factory.jobs.get("remote").get(job):
+                                self.factory.jobs.get("remote").get(job).append(server)
+                else:
+                    self.factory.jobs.get("remote")[job] = jobs.get(job)
+
+        # add the synchronized server into server list
+        if not self.transport.getPeer().host in self.factory.servers:
+            self.factory.servers.append(self.transport.getPeer().host)
+
         return None
 
     """
@@ -232,8 +275,8 @@ class SocketHandler(protocol.Protocol):
                 del self.factory.requests.get('remote')[process]
 
                 try:
-                    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    client.bind((ip, self.factory.configuration.get("port")))
+                    client = socket(AF_INET, SOCK_STREAM)
+                    client.connect((ip, self.factory.configuration.get("port")))
                     client.send("%s\r\n" % json.dumps({
                         "cmd"   : "remote-call",
                         "params": json.dumps(data.get('params'))
@@ -268,8 +311,8 @@ class SocketHandler(protocol.Protocol):
         if self.factory.jobs.get('remote').has_key(name) and (len(self.factory.jobs.get('remote')[name]) > 0):
             ip = random.sample(self.factory.jobs.get('remote').get(name), 1)
             try:
-                worker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                worker.bind((ip, self.factory.configuration.get("port")))
+                worker = socket(AF_INET, SOCK_STREAM)
+                worker.connect((ip, self.factory.configuration.get("port")))
                 return worker
             except:
                 # TODO: remove unavailable server
@@ -285,8 +328,8 @@ class SocketHandler(protocol.Protocol):
         if len(self.factory.servers) > 0:
             for server in self.factory.servers:
                 try:
-                    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    client.bind((server, self.factory.configuration.get("port")))
+                    client = socket(AF_INET, SOCK_STREAM)
+                    client.connect((server, self.factory.configuration.get("port")))
                     client.send("%s\r\n" % json.dumps(message))
                     client.close()
                 except:
