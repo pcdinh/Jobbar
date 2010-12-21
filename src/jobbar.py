@@ -50,7 +50,6 @@ factory.requests = {
 
 # Synchronization Process- BEGIN
 if factory.configuration.get("server") != None:
-    factory.servers.append(factory.configuration.get("server"))
     try:
         sync = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sync.bind((factory.configuration.get("server"), factory.configuration.get("port")))
@@ -59,11 +58,28 @@ if factory.configuration.get("server") != None:
         sync.close()
 
         if response:
-            # update factory!!
-            pass
+            try:
+                data = json.loads(response)
+                factory.servers.append(factory.configuration.get("server"))
 
+                if len(data.get("servers")) > 0:
+                    for server in data.get("servers"):
+                        if not server in self.factory.servers:
+                            self.factory.servers.append(server)
+
+                # job list
+                if len(data.get("jobs")) > 0:
+                    for job in data.get("jobs"):
+                        if job in self.factory.jobs.get("remote"):
+                            if len(data.get("jobs").get(job)) > 0:
+                                for server in data.get("jobs").get(job):
+                                    if not server in self.factory.jobs.get("remote").get(job):
+                                        self.factory.jobs.get("remote").get(job).append(server)
+                        else:
+                            self.factory.jobs.get("remote")[job] = data.get("jobs").get(job)
+            except:
+                pass
     except:
-        # job server is not reachable at the moment
         pass
 # Synchronization Process- END
 

@@ -48,9 +48,6 @@ class SocketHandler(protocol.Protocol):
             elif command == 'notify':
                 return self.notify(params.get("do"), params.get("name"))
 
-            elif command == 'do-sync':
-                return self.doSync(params.get("servers"), params.get("jobs"))
-
             elif command == 'call':
                 if params.get('bg') == False:
                     params['uuid'] = uuid.uuid1()
@@ -94,40 +91,12 @@ class SocketHandler(protocol.Protocol):
                         if not ip in tempData.get("jobs").get(job):
                             tempData.get("jobs").get(job).append(ip)
 
-        self.transport.write(json.dumps({
-            "cmd"   : "do-sync",
-            "params": tempData
-        }));
+        self.transport.write(json.dumps(tempData));
 
         # add the synchronized server into server list
         if not self.transport.getPeer().host in self.factory.servers:
             self.factory.servers.append(self.transport.getPeer().host)
         del tempData
-        return None
-
-    """
-    @param  List    servers: Remote server list
-    @param  Object  jobs: Available job list
-    This method returns some sort of server and job lists which are available on job servers.
-    """
-    def doSync(self, servers, jobs):
-        # server list
-        if len(servers) > 0:
-            for server in servers:
-                if not server in self.factory.servers:
-                    self.factory.servers.append(server)
-
-        # job list
-        if len(jobs) > 0:
-            for job in jobs:
-                if job in self.factory.jobs.get("remote"):
-                    if len(jobs.get(job)) > 0:
-                        for server in jobs.get(job):
-                            if not server in self.factory.jobs.get("remote").get(job):
-                                self.factory.jobs.get("remote").get(job).append(server)
-                else:
-                    self.factory.jobs.get("remote")[job] = jobs.get(job)
-
         return None
 
     """
