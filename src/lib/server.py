@@ -20,7 +20,7 @@ class SocketHandler(protocol.Protocol):
         if len(line) > 0:
             response = self.requestHandler(line)
             if response != None:
-                self.transport.write(response + "\n\r");
+                self.transport.write(response + "\r\n");
 
     def requestHandler(self, request):
         try:
@@ -47,10 +47,10 @@ class SocketHandler(protocol.Protocol):
                 return self.sync()
 
             elif command == 'do-sync':
-                return self.doSync(params.get("servers"), params.get("jobs"))
+                return self.doSync(params.get('servers'), params.get('jobs'))
 
             elif command == 'notify':
-                return self.notify(params.get("do"), params.get("name"))
+                return self.notify(params.get('do'), params.get('name'))
 
             elif command == 'call':
                 if params.get('bg') == False:
@@ -59,8 +59,9 @@ class SocketHandler(protocol.Protocol):
                 return self.call(params.get('name'), params, params.get('bg'))
 
             elif command == 'remote':
-                if params.get('bg') == False:
-                    params['uuid'] = uuid.uuid1()
+                if params.has_key('uuid'):
+                    if not params.has_key('source'):
+                        params['source'] = self.transport.getPeer().host
 
                 return self.remoteCall(params.get('name'), params, params.get('bg'))
 
@@ -80,27 +81,27 @@ class SocketHandler(protocol.Protocol):
     """
     def sync(self):
         tempData = {
-            "servers": self.factory.servers,
-            "jobs"   : self.factory.jobs.get("remote")
+            'servers': self.factory.servers,
+            'jobs'   : self.factory.jobs.get('remote')
         }
-        if len(self.factory.jobs.get("local")) > 0:
-            for job in self.factory.jobs.get("local"):
-                if not tempData.get("jobs").has_key(job):
-                    tempData.get("jobs")[job] = []
+        if len(self.factory.jobs.get('local')) > 0:
+            for job in self.factory.jobs.get('local'):
+                if not tempData.get('jobs').has_key(job):
+                    tempData.get('jobs')[job] = []
 
                 # we need to convert local jobs to remote jobs by ip addresses
-                if len(self.factory.jobs.get("local").get(job)) > 0:
-                    for worker in self.factory.jobs.get("local").get(job):
+                if len(self.factory.jobs.get('local').get(job)) > 0:
+                    for worker in self.factory.jobs.get('local').get(job):
                         ip = worker.transport.getPeer().host
-                        if not ip in tempData.get("jobs").get(job):
-                            tempData.get("jobs").get(job).append(ip)
+                        if not ip in tempData.get('jobs').get(job):
+                            tempData.get('jobs').get(job).append(ip)
 
         try:
             sync = socket(AF_INET, SOCK_STREAM)
-            sync.connect((self.transport.getPeer().host, self.factory.configuration.get("port")))
+            sync.connect((self.transport.getPeer().host, self.factory.configuration.get('port')))
             sync.send("%s\r\n" % json.dumps({
-                "cmd"   : "do-sync",
-                "params": tempData
+                'cmd'   : 'do-sync',
+                'params': tempData
             }));
             sync.close()
         except:
@@ -127,16 +128,16 @@ class SocketHandler(protocol.Protocol):
         # job list
         if len(jobs) > 0:
             for job in jobs:
-                if job in self.factory.jobs.get("remote"):
+                if job in self.factory.jobs.get('remote'):
                     if len(jobs.get(job)) > 0:
                         for server in jobs.get(job):
-                            if not server in self.factory.jobs.get("remote").get(job):
-                                if server == "127.0.0.1":
+                            if not server in self.factory.jobs.get('remote').get(job):
+                                if server == '127.0.0.1':
                                     server = self.transport.getPeer().host
 
-                                self.factory.jobs.get("remote").get(job).append(server)
+                                self.factory.jobs.get('remote').get(job).append(server)
                 else:
-                    self.factory.jobs.get("remote")[job] = jobs.get(job)
+                    self.factory.jobs.get('remote')[job] = jobs.get(job)
 
         # add the synchronized server into server list
         if not self.transport.getPeer().host in self.factory.servers:
@@ -151,16 +152,16 @@ class SocketHandler(protocol.Protocol):
     def notify(self, do, name):
         ip = self.transport.getPeer().host
 
-        if do == "register":
-            if not self.factory.job.get("remote").has_key(name):
-                self.factory.job.get("remote")[name] = [ ip ]
-            elif ip not in self.factory.job.get("remote").get(name):
-                self.factory.job.get("remote").get(name).append(ip)
+        if do == 'register':
+            if not self.factory.job.get('remote').has_key(name):
+                self.factory.job.get('remote')[name] = [ ip ]
+            elif ip not in self.factory.job.get('remote').get(name):
+                self.factory.job.get('remote').get(name).append(ip)
 
-        elif do == "unregister":
-            if self.factory.job.get("remote").has_key(name):
-                if ip in self.factory.job.get("remote").get(name):
-                    self.factory.job.get("remote").get(name).remove(ip)
+        elif do == 'unregister':
+            if self.factory.job.get('remote').has_key(name):
+                if ip in self.factory.job.get('remote').get(name):
+                    self.factory.job.get('remote').get(name).remove(ip)
 
         return None
 
@@ -179,10 +180,10 @@ class SocketHandler(protocol.Protocol):
             self.factory.jobs.get('local').get(name).append(self)
 
         self.broadcast({
-            "cmd"   : "notify",
-            "params": {
-                "do"  : "register",
-                "name": name
+            'cmd'   : 'notify',
+            'params': {
+                'do'  : 'register',
+                'name': name
             }
         })
         return None
@@ -193,14 +194,14 @@ class SocketHandler(protocol.Protocol):
     """
     def unregisterByName(self, name):
         if self.factory.jobs.get('local').has_key(name):
-            if self in self.factory.jobs.get("local").get(name):
+            if self in self.factory.jobs.get('local').get(name):
                 self.factory.jobs.get('local').get(name).remove(self)
 
         self.broadcast({
-            "cmd"   : "notify",
-            "params": {
-                "do"  : "unregister",
-                "name": name
+            'cmd'   : 'notify',
+            'params': {
+                'do'  : 'unregister',
+                'name': name
             }
         })
         return None
@@ -236,10 +237,9 @@ class SocketHandler(protocol.Protocol):
             if not background:
                 self.factory.requests.get('local')[params.get('uuid')] = self
 
-            # remote job call
             worker.send("%s\r\n" % json.dumps({
-                "cmd"   : "remote",
-                "params": json.dumps(params)
+                'cmd'   : 'remote',
+                'params': json.dumps(params)
             }))
             worker.close()
 
@@ -260,7 +260,14 @@ class SocketHandler(protocol.Protocol):
             worker.transport.write("%s\r\n" % json.dumps(params));
             return None
 
-        # TODO: we should make another remote call if there is no suitable worker!
+        worker = self.getWorkerSocket(name)
+        if worker != None:
+            worker.send("%s\r\n" % json.dumps({
+                'cmd'   : 'remote',
+                'params': json.dumps(params)
+            }))
+            worker.close()
+
         return None
 
     """
@@ -277,16 +284,19 @@ class SocketHandler(protocol.Protocol):
                 del self.factory.requests.get('local')[process]
 
             elif self.factory.requests.get('remote').has_key(process):
-                del data.get('params')['uuid']
-                ip = self.factory.requests.get('remote').get(process)
+                if data.get('params').has_key('source'):
+                    ip = data.get('params').get('source')
+                else:
+                    ip = self.factory.requests.get('remote').get(process)
+
                 del self.factory.requests.get('remote')[process]
 
                 try:
                     client = socket(AF_INET, SOCK_STREAM)
-                    client.connect((ip, self.factory.configuration.get("port")))
+                    client.connect((ip, self.factory.configuration.get('port')))
                     client.send("%s\r\n" % json.dumps({
-                        "cmd"   : "remote-call",
-                        "params": json.dumps(data.get('params'))
+                        'cmd'   : 'response',
+                        'params': json.dumps(data.get('params'))
                     }))
                     client.close()
                 except:
@@ -319,7 +329,7 @@ class SocketHandler(protocol.Protocol):
             ip = random.sample(self.factory.jobs.get('remote').get(name), 1)
             try:
                 worker = socket(AF_INET, SOCK_STREAM)
-                worker.connect((ip, self.factory.configuration.get("port")))
+                worker.connect((ip, self.factory.configuration.get('port')))
                 return worker
             except:
                 if ip in self.factory.jobs.get('remote').get(name):
@@ -338,7 +348,7 @@ class SocketHandler(protocol.Protocol):
             for server in self.factory.servers:
                 try:
                     client = socket(AF_INET, SOCK_STREAM)
-                    client.connect((server, self.factory.configuration.get("port")))
+                    client.connect((server, self.factory.configuration.get('port')))
                     client.send("%s\r\n" % json.dumps(message))
                     client.close()
                 except:

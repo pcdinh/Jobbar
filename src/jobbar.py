@@ -28,10 +28,10 @@ factory = protocol.ServerFactory()
 
 # Server Configuration - BEGIN
 factory.configuration = {
-    "debug": False,
-    "port": 9000,
-    "server": None,
-    "plugin": {}
+    'debug' : False,
+    'port'  : 9000,
+    'server': None,
+    'plugin': {}
 }
 # Server Configuration - END
 
@@ -40,19 +40,19 @@ factory.configuration = {
 factory.servers = []
 factory.workers = []
 factory.jobs = {
-    "local": {},
-    "remote": {}
+    'local': {},
+    'remote': {}
 }
 factory.requests = {
-    "local": {},
-    "remote": {}
+    'local': {},
+    'remote': {}
 }
 
 # Synchronization Process- BEGIN
 if factory.configuration.get("server") != None:
     try:
         sync = socket(AF_INET, SOCK_STREAM)
-        sync.connect((factory.configuration.get("server"), factory.configuration.get("port")))
+        sync.connect((factory.configuration.get("server"), factory.configuration.get('port')))
         sync.send("{\"cmd\": \"sync\", \"params\": {}}\r\n");
         sync.close()
     except:
@@ -61,5 +61,5 @@ if factory.configuration.get("server") != None:
 # Synchronization Process- END
 
 factory.protocol = SocketHandler
-reactor.listenTCP(factory.configuration.get("port"), factory)
+reactor.listenTCP(factory.configuration.get('port'), factory)
 reactor.run()
